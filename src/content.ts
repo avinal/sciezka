@@ -1,7 +1,10 @@
 import type { Message } from "./types";
 
+const EXTENSION_ORIGIN = chrome.runtime.getURL("").slice(0, -1);
+
 let overlay: HTMLDivElement | null = null;
 let iframe: HTMLIFrameElement | null = null;
+let messageNonce: string | null = null;
 
 function createOverlay(): void {
   overlay = document.createElement("div");
@@ -21,8 +24,9 @@ function createOverlay(): void {
     transition: background 0.15s ease;
   `;
 
+  messageNonce = crypto.randomUUID();
   iframe = document.createElement("iframe");
-  iframe.src = chrome.runtime.getURL("sciezka.html");
+  iframe.src = chrome.runtime.getURL("sciezka.html") + "#" + messageNonce;
   iframe.style.cssText = `
     width: 620px;
     height: 60px;
@@ -81,6 +85,7 @@ document.addEventListener("keydown", (e) => {
 
 window.addEventListener("message", (event) => {
   if (event.source !== iframe?.contentWindow) return;
+  if (!event.data?._nonce || event.data._nonce !== messageNonce) return;
 
   const data = event.data as Message;
   if (data.type === "closeSaka") {
@@ -94,8 +99,9 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (data.type === "search" || data.type === "action") {
-    chrome.runtime.sendMessage(data, (response) => {
-      iframe?.contentWindow?.postMessage(response, "*");
+    chrome.runtime.sendMessage(data, (response: unknown) => {
+      const msg = typeof response === "object" && response ? { ...(response as Record<string, unknown>), _nonce: messageNonce } : response;
+      iframe?.contentWindow?.postMessage(msg, EXTENSION_ORIGIN);
     });
   }
 });

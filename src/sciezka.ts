@@ -11,6 +11,8 @@ const MODE_LABELS: Record<SearchMode, string> = {
 };
 const METHODS: SearchMethod[] = ["fuzzy", "fulltext", "prefix"];
 
+const MESSAGE_NONCE = location.hash.slice(1);
+
 let currentMode: SearchMode = "tabs";
 let currentMethod: SearchMethod = "fuzzy";
 let results: SearchResult[] = [];
@@ -25,17 +27,17 @@ const root = document.getElementById("sciezka-root") as HTMLDivElement;
 
 function notifyResize(): void {
   const height = Math.min(root.scrollHeight, 520);
-  window.parent.postMessage({ type: "resize", height }, "*");
+  window.parent.postMessage({ type: "resize", _nonce: MESSAGE_NONCE, height }, "*");
 }
 
 function sendMessage(msg: Message): Promise<unknown> {
   return new Promise((resolve) => {
-    window.parent.postMessage(msg, "*");
+    window.parent.postMessage({ ...msg, _nonce: MESSAGE_NONCE }, "*");
     const handler = (event: MessageEvent) => {
-      if (event.source === window.parent) {
-        window.removeEventListener("message", handler);
-        resolve(event.data);
-      }
+      if (event.source !== window.parent) return;
+      if (!event.data?._nonce || event.data._nonce !== MESSAGE_NONCE) return;
+      window.removeEventListener("message", handler);
+      resolve(event.data);
     };
     window.addEventListener("message", handler);
   });
@@ -62,11 +64,17 @@ function renderMethodBadge(): void {
 }
 
 function highlightText(text: string, positions: number[], offset: number): string {
-  const chars = text.split("");
   const posSet = new Set(positions.map((p) => p - offset).filter((p) => p >= 0 && p < text.length));
-  return chars
-    .map((c, i) => (posSet.has(i) ? `<mark>${escapeHtml(c)}</mark>` : escapeHtml(c)))
-    .join("");
+  let result = "";
+  let inMark = false;
+  for (let i = 0; i < text.length; i++) {
+    const matched = posSet.has(i);
+    if (matched && !inMark) { result += "<mark>"; inMark = true; }
+    if (!matched && inMark) { result += "</mark>"; inMark = false; }
+    result += escapeHtml(text[i]);
+  }
+  if (inMark) result += "</mark>";
+  return result;
 }
 
 function escapeHtml(s: string): string {
@@ -157,7 +165,7 @@ function activateResult(index: number): void {
     : { type: "action", action: "open", id: item.url };
 
   sendMessage(msg);
-  window.parent.postMessage({ type: "closeSaka" }, "*");
+  window.parent.postMessage({ type: "closeSaka", _nonce: MESSAGE_NONCE }, "*");
 }
 
 async function doSearch(): Promise<void> {
@@ -183,7 +191,7 @@ input.addEventListener("input", () => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    window.parent.postMessage({ type: "closeSaka" }, "*");
+    window.parent.postMessage({ type: "closeSaka", _nonce: MESSAGE_NONCE }, "*");
     return;
   }
 
@@ -209,7 +217,7 @@ document.addEventListener("keydown", (e) => {
       const result = results[selectedIndex];
       if (result && result.item.type !== "tabs") {
         sendMessage({ type: "action", action: "open", id: result.item.url, newTab: true });
-        window.parent.postMessage({ type: "closeSaka" }, "*");
+        window.parent.postMessage({ type: "closeSaka", _nonce: MESSAGE_NONCE }, "*");
       }
     } else {
       activateResult(selectedIndex);

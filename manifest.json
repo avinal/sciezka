@@ -13,6 +13,9 @@
     "sessions",
     "storage"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' data:;"
+  },
   "background": {
     "scripts": ["dist/background.js"]
   },
