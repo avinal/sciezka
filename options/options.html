@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sciezka Options</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 32px;
+      max-width: 520px;
+      margin: 0 auto;
+      color: #1a1a1a;
+      background: #fafafa;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 28px;
+    }
+    .field {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #444;
+    }
+    label .desc {
+      font-weight: 400;
+      color: #888;
+    }
+    select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 0;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+      color: #1a1a1a;
+    }
+    select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    }
+    .saved {
+      font-size: 12px;
+      color: #16a34a;
+      margin-top: 16px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .saved.show { opacity: 1; }
+    .shortcut-info {
+      margin-top: 24px;
+      padding: 12px 16px;
+      background: #fff;
+      border: 1px solid #e8e8e8;
+      border-radius: 0;
+      font-size: 13px;
+      color: #666;
+    }
+    .shortcut-info kbd {
+      padding: 1px 6px;
+      background: #f0f0f0;
+      border-radius: 0;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a1a; color: #e0e0e0; }
+      label { color: #ccc; }
+      label .desc { color: #777; }
+      select { background: #2a2a2a; border-color: #444; color: #e0e0e0; }
+      .shortcut-info { background: #252525; border-color: #333; color: #888; }
+      .shortcut-info kbd { background: #333; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Sciezka</h1>
+  <p class="subtitle">Tab search &amp; navigation settings</p>
+
+  <div class="field">
+    <label>Default mode <span class="desc">— which mode to show on open</span></label>
+    <select id="opt-mode">
+      <option value="tabs">Tabs</option>
+      <option value="history">History</option>
+      <option value="bookmarks">Bookmarks</option>
+      <option value="closed">Recently Closed</option>
+      <option value="all">All</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Default search method <span class="desc">— how to match results</span></label>
+    <select id="opt-method">
+      <option value="fuzzy">Fuzzy</option>
+      <option value="fulltext">Full Text</option>
+      <option value="prefix">Prefix</option>
+    </select>
+  </div>
+
+  <div class="saved" id="saved-msg">Settings saved</div>
+
+  <div class="shortcut-info">
+    Keyboard shortcut can be changed in <kbd>about:addons</kbd> &rarr; gear icon &rarr; Manage Extension Shortcuts
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
