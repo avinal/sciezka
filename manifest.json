@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Sciezka",
+  "version": "0.1.0",
+  "description": "A browser extension to fuzzy search tabs, history and bookmarks.",
+  "icons": {
+    "48": "icons/border-48.png"
+  },
+  "permissions": [
+    "tabs",
+    "history",
+    "bookmarks",
+    "sessions",
+    "storage"
+  ],
+  "background": {
+    "scripts": ["dist/background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "toggle-sciezka": {
+      "suggested_key": {
+        "default": "Alt+K"
+      },
+      "description": "Toggle Sciezka search"
+    }
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["sciezka.html", "sciezka.css", "dist/sciezka.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

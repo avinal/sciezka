@@ -1,0 +1,14 @@
+{
+  "name": "sciezka",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A browser extension for fuzzy searching tabs, history and bookmarks.",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  }
+}
