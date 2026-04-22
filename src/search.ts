@@ -138,6 +138,9 @@ export function search(items: SearchItem[], query: string, method: SearchMethod)
     }
   }
 
-  results.sort((a, b) => b.score - a.score);
+  results.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (b.item.lastAccessed ?? 0) - (a.item.lastAccessed ?? 0);
+  });
   return results;
 }

@@ -1,4 +1,4 @@
-export type SearchMode = "tabs" | "history" | "bookmarks" | "closed" | "all";
+export type SearchMode = "tabs" | "history" | "bookmarks" | "closed";
 export type SearchMethod = "fuzzy" | "fulltext" | "prefix";
 
 export interface SearchItem {
@@ -7,6 +7,7 @@ export interface SearchItem {
   url: string;
   type: SearchMode;
   favIconUrl?: string;
+  lastAccessed?: number;
 }
 
 export interface SearchResult {

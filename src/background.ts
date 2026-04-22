@@ -1,14 +1,19 @@
 import type { Message, SearchRequest, ActionRequest, SearchItem } from "./types";
 
+function sortByRecent(items: SearchItem[]): SearchItem[] {
+  return items.sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0));
+}
+
 async function getOpenTabs(): Promise<SearchItem[]> {
   const tabs = await chrome.tabs.query({});
-  return tabs.map((tab) => ({
+  return sortByRecent(tabs.map((tab) => ({
     id: `tab-${tab.id}`,
     title: tab.title ?? "",
     url: tab.url ?? "",
     type: "tabs" as const,
     favIconUrl: tab.favIconUrl,
-  }));
+    lastAccessed: tab.lastAccessed,
+  })));
 }
 
 async function getHistory(query: string): Promise<SearchItem[]> {
@@ -17,12 +22,13 @@ async function getHistory(query: string): Promise<SearchItem[]> {
     maxResults: 50,
     startTime: 0,
   });
-  return results.map((item) => ({
+  return sortByRecent(results.map((item) => ({
     id: `history-${item.id}`,
     title: item.title ?? "",
     url: item.url ?? "",
     type: "history" as const,
-  }));
+    lastAccessed: item.lastVisitTime,
+  })));
 }
 
 async function getBookmarks(query: string): Promise<SearchItem[]> {
@@ -39,7 +45,7 @@ async function getBookmarks(query: string): Promise<SearchItem[]> {
 
 async function getRecentlyClosed(): Promise<SearchItem[]> {
   const sessions = await chrome.sessions.getRecentlyClosed({ maxResults: 25 });
-  return sessions
+  return sortByRecent(sessions
     .filter((s) => s.tab)
     .map((session) => ({
       id: `closed-${session.tab!.sessionId}`,
@@ -47,7 +53,8 @@ async function getRecentlyClosed(): Promise<SearchItem[]> {
       url: session.tab!.url ?? "",
       type: "closed" as const,
       favIconUrl: session.tab!.favIconUrl,
-    }));
+      lastAccessed: session.lastModified ? session.lastModified * 1000 : undefined,
+    })));
 }
 
 async function handleSearch(request: SearchRequest): Promise<SearchItem[]> {
@@ -61,15 +68,6 @@ async function handleSearch(request: SearchRequest): Promise<SearchItem[]> {
       return getBookmarks(query);
     case "closed":
       return getRecentlyClosed();
-    case "all": {
-      const [tabs, history, bookmarks, closed] = await Promise.all([
-        getOpenTabs(),
-        getHistory(query),
-        getBookmarks(query),
-        getRecentlyClosed(),
-      ]);
-      return [...tabs, ...history, ...bookmarks, ...closed];
-    }
   }
 }
 

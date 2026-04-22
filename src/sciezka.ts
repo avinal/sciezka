@@ -1,13 +1,12 @@
 import { search } from "./search";
 import type { SearchItem, SearchMode, SearchMethod, SearchResult, Message } from "./types";
 
-const MODES: SearchMode[] = ["tabs", "history", "bookmarks", "closed", "all"];
+const MODES: SearchMode[] = ["tabs", "history", "bookmarks", "closed"];
 const MODE_LABELS: Record<SearchMode, string> = {
   tabs: "Tabs",
   history: "History",
   bookmarks: "Bookmarks",
   closed: "Closed",
-  all: "All",
 };
 const METHODS: SearchMethod[] = ["fuzzy", "fulltext", "prefix"];
 

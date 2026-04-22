@@ -7,6 +7,7 @@ declare namespace chrome {
       url?: string;
       favIconUrl?: string;
       active?: boolean;
+      lastAccessed?: number;
     }
     function query(queryInfo: Record<string, unknown>): Promise<Tab[]>;
     function get(tabId: number): Promise<Tab>;
@@ -42,6 +43,7 @@ declare namespace chrome {
 
   namespace sessions {
     interface Session {
+      lastModified?: number;
       tab?: tabs.Tab & { sessionId?: string };
       window?: { sessionId?: string };
     }
