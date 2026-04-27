@@ -1,7 +1,7 @@
 import { search } from "./search";
-import type { SearchItem, SearchMode, SearchMethod, SearchResult, Message } from "./types";
+import type { SearchItem, SearchMode, SearchMethod, SearchResult, Message, Settings } from "./types";
 
-const MODES: SearchMode[] = ["tabs", "history", "bookmarks", "closed"];
+const ALL_MODES: SearchMode[] = ["tabs", "history", "bookmarks", "closed"];
 const MODE_LABELS: Record<SearchMode, string> = {
   tabs: "Tabs",
   history: "History",
@@ -9,20 +9,29 @@ const MODE_LABELS: Record<SearchMode, string> = {
   closed: "Closed",
 };
 const METHODS: SearchMethod[] = ["fuzzy", "fulltext", "prefix"];
+const METHOD_LABELS: Record<SearchMethod, string> = {
+  fuzzy: "Fuzzy",
+  fulltext: "Full Text",
+  prefix: "Prefix",
+};
 
 const MESSAGE_NONCE = location.hash.slice(1);
 
+let modes: SearchMode[] = [...ALL_MODES];
 let currentMode: SearchMode = "tabs";
 let currentMethod: SearchMethod = "fuzzy";
 let results: SearchResult[] = [];
 let selectedIndex = 0;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let configOpen = false;
 
 const input = document.getElementById("search-input") as HTMLInputElement;
 const resultsContainer = document.getElementById("results") as HTMLDivElement;
 const modeBar = document.getElementById("mode-bar") as HTMLDivElement;
 const methodBadge = document.getElementById("method-badge") as HTMLSpanElement;
 const root = document.getElementById("sciezka-root") as HTMLDivElement;
+const configPanel = document.getElementById("config-panel") as HTMLDivElement;
+const configBtn = document.getElementById("config-btn") as HTMLButtonElement;
 
 function notifyResize(): void {
   const height = Math.min(root.scrollHeight, 520);
@@ -42,10 +51,17 @@ function sendMessage(msg: Message): Promise<unknown> {
   });
 }
 
+function persistSettings(): void {
+  sendMessage({
+    type: "saveSettings",
+    settings: { defaultMethod: currentMethod, modeOrder: modes },
+  } as Message);
+}
+
 function renderModeBar(): void {
   modeBar.innerHTML = "";
-  for (let i = 0; i < MODES.length; i++) {
-    const mode = MODES[i];
+  for (let i = 0; i < modes.length; i++) {
+    const mode = modes[i];
     const btn = document.createElement("button");
     btn.className = `mode-btn${mode === currentMode ? " active" : ""}`;
     btn.innerHTML = `<span class="mode-label">${MODE_LABELS[mode]}</span><kbd>${i + 1}</kbd>`;
@@ -60,6 +76,114 @@ function renderModeBar(): void {
 
 function renderMethodBadge(): void {
   methodBadge.textContent = currentMethod;
+}
+
+function toggleConfig(): void {
+  configOpen = !configOpen;
+  configBtn.classList.toggle("active", configOpen);
+  if (configOpen) {
+    resultsContainer.style.display = "none";
+    configPanel.style.display = "block";
+    renderConfigPanel();
+  } else {
+    configPanel.style.display = "none";
+    resultsContainer.style.display = "";
+  }
+  notifyResize();
+}
+
+function renderConfigPanel(): void {
+  configPanel.innerHTML = "";
+
+  const methodSection = document.createElement("div");
+  methodSection.className = "config-section";
+  methodSection.innerHTML = `<div class="config-label">Search Method</div>`;
+  const methodRow = document.createElement("div");
+  methodRow.className = "config-method-row";
+  for (const m of METHODS) {
+    const btn = document.createElement("button");
+    btn.className = `config-method-btn${m === currentMethod ? " active" : ""}`;
+    btn.textContent = METHOD_LABELS[m];
+    btn.addEventListener("click", () => {
+      currentMethod = m;
+      renderMethodBadge();
+      renderConfigPanel();
+      persistSettings();
+      doSearch();
+    });
+    methodRow.appendChild(btn);
+  }
+  methodSection.appendChild(methodRow);
+  configPanel.appendChild(methodSection);
+
+  const orderSection = document.createElement("div");
+  orderSection.className = "config-section";
+  orderSection.innerHTML = `<div class="config-label">Tab Order <span class="config-hint">drag or use arrows</span></div>`;
+  const orderList = document.createElement("div");
+  orderList.className = "config-order-list";
+
+  for (let i = 0; i < modes.length; i++) {
+    const mode = modes[i];
+    const row = document.createElement("div");
+    row.className = "config-order-row";
+    row.draggable = true;
+    row.dataset.index = String(i);
+
+    const label = document.createElement("span");
+    label.className = "config-order-label";
+    label.textContent = MODE_LABELS[mode];
+
+    const arrows = document.createElement("span");
+    arrows.className = "config-arrows";
+
+    const upBtn = document.createElement("button");
+    upBtn.className = "config-arrow-btn";
+    upBtn.textContent = "\u25B2";
+    upBtn.disabled = i === 0;
+    upBtn.addEventListener("click", () => { swapModes(i, i - 1); });
+
+    const downBtn = document.createElement("button");
+    downBtn.className = "config-arrow-btn";
+    downBtn.textContent = "\u25BC";
+    downBtn.disabled = i === modes.length - 1;
+    downBtn.addEventListener("click", () => { swapModes(i, i + 1); });
+
+    arrows.appendChild(upBtn);
+    arrows.appendChild(downBtn);
+    row.appendChild(label);
+    row.appendChild(arrows);
+
+    row.addEventListener("dragstart", (e) => {
+      e.dataTransfer?.setData("text/plain", String(i));
+      row.classList.add("dragging");
+    });
+    row.addEventListener("dragend", () => { row.classList.remove("dragging"); });
+    row.addEventListener("dragover", (e) => { e.preventDefault(); });
+    row.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const from = parseInt(e.dataTransfer?.getData("text/plain") ?? "", 10);
+      if (!isNaN(from) && from !== i) {
+        const moved = modes.splice(from, 1)[0];
+        modes.splice(i, 0, moved);
+        if (currentMode === modes[0]) currentMode = modes[0];
+        renderModeBar();
+        renderConfigPanel();
+        persistSettings();
+      }
+    });
+
+    orderList.appendChild(row);
+  }
+  orderSection.appendChild(orderList);
+  configPanel.appendChild(orderSection);
+  notifyResize();
+}
+
+function swapModes(a: number, b: number): void {
+  [modes[a], modes[b]] = [modes[b], modes[a]];
+  renderModeBar();
+  renderConfigPanel();
+  persistSettings();
 }
 
 function highlightText(text: string, positions: number[], offset: number): string {
@@ -188,11 +312,19 @@ input.addEventListener("input", () => {
   debounceTimer = setTimeout(doSearch, 50);
 });
 
+configBtn.addEventListener("click", toggleConfig);
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
+    if (configOpen) {
+      toggleConfig();
+      return;
+    }
     window.parent.postMessage({ type: "closeSaka", _nonce: MESSAGE_NONCE }, "*");
     return;
   }
+
+  if (configOpen) return;
 
   if (e.key === "ArrowDown" || (e.ctrlKey && e.key === "j")) {
     e.preventDefault();
@@ -227,8 +359,8 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Tab") {
     e.preventDefault();
     const dir = e.shiftKey ? -1 : 1;
-    const idx = MODES.indexOf(currentMode);
-    currentMode = MODES[(idx + dir + MODES.length) % MODES.length];
+    const idx = modes.indexOf(currentMode);
+    currentMode = modes[(idx + dir + modes.length) % modes.length];
     renderModeBar();
     doSearch();
     return;
@@ -239,6 +371,7 @@ document.addEventListener("keydown", (e) => {
     const idx = METHODS.indexOf(currentMethod);
     currentMethod = METHODS[(idx + 1) % METHODS.length];
     renderMethodBadge();
+    persistSettings();
     doSearch();
     return;
   }
@@ -255,11 +388,11 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  if (e.ctrlKey && e.key >= "1" && e.key <= "5") {
+  if (e.ctrlKey && e.key >= "1" && e.key <= "4") {
     e.preventDefault();
     const modeIdx = parseInt(e.key, 10) - 1;
-    if (modeIdx < MODES.length) {
-      currentMode = MODES[modeIdx];
+    if (modeIdx < modes.length) {
+      currentMode = modes[modeIdx];
       renderModeBar();
       doSearch();
     }
@@ -267,7 +400,24 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-document.addEventListener("DOMContentLoaded", () => {
+async function loadSettings(): Promise<void> {
+  try {
+    const response = await sendMessage({ type: "getSettings" } as Message);
+    const data = response as { type: string; settings: Settings };
+    if (data?.settings) {
+      currentMethod = data.settings.defaultMethod;
+      if (data.settings.modeOrder?.length) {
+        modes = data.settings.modeOrder;
+        currentMode = modes[0];
+      }
+    }
+  } catch {
+    // defaults
+  }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadSettings();
   renderModeBar();
   renderMethodBadge();
   input.focus();

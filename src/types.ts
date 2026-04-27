@@ -48,10 +48,32 @@ export interface ResizeMessage {
   height: number;
 }
 
+export interface Settings {
+  defaultMethod: SearchMethod;
+  modeOrder: SearchMode[];
+}
+
+export interface GetSettingsRequest {
+  type: "getSettings";
+}
+
+export interface SaveSettingsRequest {
+  type: "saveSettings";
+  settings: Partial<Settings>;
+}
+
+export interface SettingsResponse {
+  type: "settingsResponse";
+  settings: Settings;
+}
+
 export type Message =
   | SearchRequest
   | SearchResponse
   | ActionRequest
   | ToggleMessage
   | CloseMessage
-  | ResizeMessage;
+  | ResizeMessage
+  | GetSettingsRequest
+  | SaveSettingsRequest
+  | SettingsResponse;

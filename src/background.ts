@@ -1,4 +1,21 @@
-import type { Message, SearchRequest, ActionRequest, SearchItem } from "./types";
+import type { Message, SearchRequest, ActionRequest, SearchItem, Settings } from "./types";
+
+const DEFAULT_SETTINGS: Settings = {
+  defaultMethod: "fuzzy",
+  modeOrder: ["tabs", "history", "bookmarks", "closed"],
+};
+
+async function getSettings(): Promise<Settings> {
+  const data = await chrome.storage.sync.get(["defaultMethod", "modeOrder"]);
+  return { ...DEFAULT_SETTINGS, ...data } as Settings;
+}
+
+async function saveSettings(partial: Partial<Settings>): Promise<Settings> {
+  const current = await getSettings();
+  const updated = { ...current, ...partial };
+  await chrome.storage.sync.set(updated);
+  return updated;
+}
 
 function sortByRecent(items: SearchItem[]): SearchItem[] {
   return items.sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0));
@@ -133,6 +150,18 @@ chrome.runtime.onMessage.addListener(
     }
     if (message.type === "action") {
       handleAction(message).then(() => sendResponse({ ok: true }));
+      return true;
+    }
+    if (message.type === "getSettings") {
+      getSettings().then((settings) => {
+        sendResponse({ type: "settingsResponse", settings });
+      });
+      return true;
+    }
+    if (message.type === "saveSettings") {
+      saveSettings(message.settings).then((settings) => {
+        sendResponse({ type: "settingsResponse", settings });
+      });
       return true;
     }
   }

@@ -98,7 +98,7 @@ window.addEventListener("message", (event) => {
     }
     return;
   }
-  if (data.type === "search" || data.type === "action") {
+  if (data.type === "search" || data.type === "action" || data.type === "getSettings" || data.type === "saveSettings") {
     chrome.runtime.sendMessage(data, (response: unknown) => {
       const msg = typeof response === "object" && response ? { ...(response as Record<string, unknown>), _nonce: messageNonce } : response;
       iframe?.contentWindow?.postMessage(msg, EXTENSION_ORIGIN);
