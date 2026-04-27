@@ -59,12 +59,17 @@ function persistSettings(): void {
 }
 
 function renderModeBar(): void {
-  modeBar.innerHTML = "";
+  modeBar.replaceChildren();
   for (let i = 0; i < modes.length; i++) {
     const mode = modes[i];
     const btn = document.createElement("button");
     btn.className = `mode-btn${mode === currentMode ? " active" : ""}`;
-    btn.innerHTML = `<span class="mode-label">${MODE_LABELS[mode]}</span><kbd>${i + 1}</kbd>`;
+    const label = document.createElement("span");
+    label.className = "mode-label";
+    label.textContent = MODE_LABELS[mode];
+    const kbd = document.createElement("kbd");
+    kbd.textContent = String(i + 1);
+    btn.append(label, kbd);
     btn.addEventListener("click", () => {
       currentMode = mode;
       renderModeBar();
@@ -93,11 +98,14 @@ function toggleConfig(): void {
 }
 
 function renderConfigPanel(): void {
-  configPanel.innerHTML = "";
+  configPanel.replaceChildren();
 
   const methodSection = document.createElement("div");
   methodSection.className = "config-section";
-  methodSection.innerHTML = `<div class="config-label">Search Method</div>`;
+  const methodLabel = document.createElement("div");
+  methodLabel.className = "config-label";
+  methodLabel.textContent = "Search Method";
+  methodSection.appendChild(methodLabel);
   const methodRow = document.createElement("div");
   methodRow.className = "config-method-row";
   for (const m of METHODS) {
@@ -118,7 +126,14 @@ function renderConfigPanel(): void {
 
   const orderSection = document.createElement("div");
   orderSection.className = "config-section";
-  orderSection.innerHTML = `<div class="config-label">Tab Order <span class="config-hint">drag or use arrows</span></div>`;
+  const orderLabel = document.createElement("div");
+  orderLabel.className = "config-label";
+  orderLabel.textContent = "Tab Order ";
+  const orderHint = document.createElement("span");
+  orderHint.className = "config-hint";
+  orderHint.textContent = "drag or use arrows";
+  orderLabel.appendChild(orderHint);
+  orderSection.appendChild(orderLabel);
   const orderList = document.createElement("div");
   orderList.className = "config-order-list";
 
@@ -186,38 +201,39 @@ function swapModes(a: number, b: number): void {
   persistSettings();
 }
 
-function highlightText(text: string, positions: number[], offset: number): string {
+function highlightText(text: string, positions: number[], offset: number): DocumentFragment {
   const posSet = new Set(positions.map((p) => p - offset).filter((p) => p >= 0 && p < text.length));
-  let result = "";
-  let inMark = false;
+  const frag = document.createDocumentFragment();
+  let mark: HTMLElement | null = null;
   for (let i = 0; i < text.length; i++) {
     const matched = posSet.has(i);
-    if (matched && !inMark) { result += "<mark>"; inMark = true; }
-    if (!matched && inMark) { result += "</mark>"; inMark = false; }
-    result += escapeHtml(text[i]);
+    if (matched && !mark) {
+      mark = document.createElement("mark");
+    }
+    if (!matched && mark) {
+      frag.appendChild(mark);
+      mark = null;
+    }
+    (mark ?? frag).appendChild(document.createTextNode(text[i]));
   }
-  if (inMark) result += "</mark>";
-  return result;
+  if (mark) frag.appendChild(mark);
+  return frag;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-function typeIcon(type: SearchMode): string {
-  switch (type) {
-    case "tabs": return "&#x1F4C4;";
-    case "history": return "&#x1F552;";
-    case "bookmarks": return "&#x2B50;";
-    case "closed": return "&#x1F6AA;";
-    default: return "";
-  }
-}
+const TYPE_ICONS: Record<SearchMode, string> = {
+  tabs: "📄",
+  history: "🕒",
+  bookmarks: "⭐",
+  closed: "🚪",
+};
 
 function renderResults(): void {
-  resultsContainer.innerHTML = "";
+  resultsContainer.replaceChildren();
   if (results.length === 0 && input.value) {
-    resultsContainer.innerHTML = `<div class="no-results">No results found</div>`;
+    const msg = document.createElement("div");
+    msg.className = "no-results";
+    msg.textContent = "No results found";
+    resultsContainer.appendChild(msg);
     notifyResize();
     return;
   }
@@ -233,18 +249,34 @@ function renderResults(): void {
     row.className = `result-row${i === selectedIndex ? " selected" : ""}`;
     row.dataset.index = String(i);
 
-    const titleHtml = highlightText(item.title, positions, 0);
-    const urlHtml = highlightText(item.url, positions, item.title.length + 1);
+    const icon = document.createElement("span");
+    icon.className = "result-icon";
+    if (item.favIconUrl) {
+      const img = document.createElement("img");
+      img.src = item.favIconUrl;
+      img.width = 16;
+      img.height = 16;
+      img.alt = "";
+      icon.appendChild(img);
+    } else {
+      icon.textContent = TYPE_ICONS[item.type] ?? "";
+    }
 
-    row.innerHTML = `
-      <span class="result-icon">${item.favIconUrl ? `<img src="${escapeHtml(item.favIconUrl)}" width="16" height="16" alt="">` : typeIcon(item.type)}</span>
-      <span class="result-text">
-        <span class="result-title">${titleHtml}</span>
-        <span class="result-url">${urlHtml}</span>
-      </span>
-      <span class="result-badge badge-${item.type}">${MODE_LABELS[item.type]}</span>
-    `;
+    const text = document.createElement("span");
+    text.className = "result-text";
+    const title = document.createElement("span");
+    title.className = "result-title";
+    title.appendChild(highlightText(item.title, positions, 0));
+    const url = document.createElement("span");
+    url.className = "result-url";
+    url.appendChild(highlightText(item.url, positions, item.title.length + 1));
+    text.append(title, url);
 
+    const badge = document.createElement("span");
+    badge.className = `result-badge badge-${item.type}`;
+    badge.textContent = MODE_LABELS[item.type];
+
+    row.append(icon, text, badge);
     row.addEventListener("click", () => activateResult(i));
     row.addEventListener("mouseenter", () => {
       selectedIndex = i;
