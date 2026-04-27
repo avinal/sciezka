@@ -5,10 +5,13 @@
   "description": "A browser extension for fuzzy searching tabs, history and bookmarks.",
   "scripts": {
     "build": "node build.mjs",
-    "watch": "node build.mjs --watch"
+    "watch": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "web-ext lint --source-dir . --warnings-as-errors=false"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "web-ext": "^10.1.0"
   }
 }
