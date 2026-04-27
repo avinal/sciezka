@@ -51,9 +51,23 @@ Press **Ctrl+Space** to open the search overlay on any page.
 ## Building
 
 ```bash
+npm install
 npm run build    # one-time build
 npm run watch    # rebuild on file changes
 ```
+
+### Packaging for Firefox
+
+To create a `.zip` (which Firefox also accepts as `.xpi`) for sideloading:
+
+```bash
+npm run build
+npx web-ext build --source-dir . --artifacts-dir ./artifacts --overwrite-dest \
+  --ignore-files "src/" "tsconfig.json" "build.mjs" "package.json" \
+  "package-lock.json" "node_modules/" "artifacts/" ".github/"
+```
+
+This produces `artifacts/sciezka-<version>.zip`. To install it in Firefox, go to `about:addons` > gear icon > Install Add-on From File.
 
 ## License
 
