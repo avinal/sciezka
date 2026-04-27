@@ -10,8 +10,11 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "ripple@avinal.space",
-      "strict_min_version": "109.0"
+      "id": "sciezka@avinal.space",
+      "strict_min_version": "109.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   },
   "permissions": [
@@ -37,7 +40,7 @@
   "commands": {
     "toggle-sciezka": {
       "suggested_key": {
-        "default": "Alt+K"
+        "default": "Ctrl+Space"
       },
       "description": "Toggle Sciezka search"
     }
