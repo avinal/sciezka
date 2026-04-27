@@ -50,11 +50,32 @@ Press **Ctrl+Space** to open the search overlay on any page.
 
 ## Building
 
+### Requirements
+
+- **OS**: Any platform that supports Node.js (Linux, macOS, Windows)
+- **Node.js**: v18 or later — [install instructions](https://nodejs.org/)
+- **npm**: comes bundled with Node.js
+
+### Build steps
+
 ```bash
+git clone https://github.com/avinal/sciezka.git
+cd sciezka
 npm install
-npm run build    # one-time build
-npm run watch    # rebuild on file changes
+npm run build
 ```
+
+`npm run build` runs `node build.mjs`, which uses [esbuild](https://esbuild.github.io/) to compile three TypeScript entry points (`src/background.ts`, `src/content.ts`, `src/sciezka.ts`) into bundled JavaScript files in the `dist/` directory. No minification or obfuscation is applied.
+
+The built extension files are:
+- `dist/background.js` — background service worker
+- `dist/content.js` — content script
+- `dist/sciezka.js` — search UI logic
+
+Other commands:
+- `npm run watch` — rebuild on file changes
+- `npm run typecheck` — run TypeScript type checking
+- `npm run lint` — validate extension with web-ext
 
 ### Packaging for Firefox
 
