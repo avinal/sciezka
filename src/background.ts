@@ -43,7 +43,7 @@ async function getOpenTabs(): Promise<SearchItem[]> {
 async function getHistory(query: string): Promise<SearchItem[]> {
   const results = await chrome.history.search({
     text: query,
-    maxResults: 50,
+    maxResults: 100,
     startTime: 0,
   });
   const seen = new Set<string>();

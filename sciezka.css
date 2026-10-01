@@ -346,6 +346,16 @@ body {
   color: #fff;
 }
 
+#result-count {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--badge-bg);
+  color: var(--text-dim);
+  font-weight: 600;
+  align-self: center;
+  border: 1px solid var(--border);
+}
+
 /* Results */
 #results {
   max-height: 360px;

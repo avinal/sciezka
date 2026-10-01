@@ -44,9 +44,10 @@ Press **Ctrl+Space** to open the search overlay on any page.
 ### Modes
 
 - **Tabs** — open tabs in all windows
-- **History** — browsing history
+- **History** — browsing history (shows up to 100 most recent; Firefox searches your full history when you type a query)
 - **Bookmarks** — saved bookmarks
-- **Closed** — recently closed tabs
+- **Closed** — recently closed tabs (limited to 25 by Firefox's `browser.sessionstore.max_tabs_undo` setting)
+- **Duplicates** — tabs with duplicate URLs, with configurable matching (exact, ignore hash, ignore query)
 
 ## Building
 

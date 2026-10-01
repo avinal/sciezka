@@ -84,6 +84,18 @@ function renderModeBar(): void {
     });
     modeBar.appendChild(btn);
   }
+  const spacer = document.createElement("span");
+  spacer.style.flex = "1";
+  modeBar.appendChild(spacer);
+  const count = document.createElement("span");
+  count.id = "result-count";
+  count.textContent = String(results.length);
+  modeBar.appendChild(count);
+}
+
+function updateResultCount(): void {
+  const el = document.getElementById("result-count");
+  if (el) el.textContent = String(results.length);
 }
 
 function renderMethodBadge(): void {
@@ -381,6 +393,7 @@ async function doSearch(): Promise<void> {
   results = search(items, query, currentMethod);
   selectedIndex = 0;
   renderResults();
+  updateResultCount();
 }
 
 input.addEventListener("input", () => {
