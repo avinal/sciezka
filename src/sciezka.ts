@@ -39,11 +39,16 @@ function notifyResize(): void {
 }
 
 function sendMessage(msg: Message): Promise<unknown> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     window.parent.postMessage({ ...msg, _nonce: MESSAGE_NONCE }, "*");
+    const timeout = setTimeout(() => {
+      window.removeEventListener("message", handler);
+      reject(new Error("Message timeout"));
+    }, 5000);
     const handler = (event: MessageEvent) => {
       if (event.source !== window.parent) return;
       if (!event.data?._nonce || event.data._nonce !== MESSAGE_NONCE) return;
+      clearTimeout(timeout);
       window.removeEventListener("message", handler);
       resolve(event.data);
     };
@@ -320,7 +325,7 @@ function activateResult(index: number): void {
     : { type: "action", action: "open", id: item.url };
 
   sendMessage(msg);
-  window.parent.postMessage({ type: "closeSaka", _nonce: MESSAGE_NONCE }, "*");
+  window.parent.postMessage({ type: "closeSciezka", _nonce: MESSAGE_NONCE }, "*");
 }
 
 async function doSearch(): Promise<void> {
@@ -352,7 +357,7 @@ document.addEventListener("keydown", (e) => {
       toggleConfig();
       return;
     }
-    window.parent.postMessage({ type: "closeSaka", _nonce: MESSAGE_NONCE }, "*");
+    window.parent.postMessage({ type: "closeSciezka", _nonce: MESSAGE_NONCE }, "*");
     return;
   }
 
@@ -380,7 +385,7 @@ document.addEventListener("keydown", (e) => {
       const result = results[selectedIndex];
       if (result && result.item.type !== "tabs") {
         sendMessage({ type: "action", action: "open", id: result.item.url, newTab: true });
-        window.parent.postMessage({ type: "closeSaka", _nonce: MESSAGE_NONCE }, "*");
+        window.parent.postMessage({ type: "closeSciezka", _nonce: MESSAGE_NONCE }, "*");
       }
     } else {
       activateResult(selectedIndex);

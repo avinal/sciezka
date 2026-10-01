@@ -40,7 +40,7 @@ export interface ToggleMessage {
 }
 
 export interface CloseMessage {
-  type: "closeSaka";
+  type: "closeSciezka";
 }
 
 export interface ResizeMessage {

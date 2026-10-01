@@ -39,13 +39,21 @@ async function getHistory(query: string): Promise<SearchItem[]> {
     maxResults: 50,
     startTime: 0,
   });
-  return sortByRecent(results.map((item) => ({
-    id: `history-${item.id}`,
-    title: item.title ?? "",
-    url: item.url ?? "",
-    type: "history" as const,
-    lastAccessed: item.lastVisitTime,
-  })));
+  const seen = new Set<string>();
+  const items: SearchItem[] = [];
+  for (const item of results) {
+    const url = item.url ?? "";
+    if (seen.has(url)) continue;
+    seen.add(url);
+    items.push({
+      id: `history-${item.id}`,
+      title: item.title ?? "",
+      url,
+      type: "history" as const,
+      lastAccessed: item.lastVisitTime,
+    });
+  }
+  return sortByRecent(items);
 }
 
 async function getBookmarks(query: string): Promise<SearchItem[]> {
@@ -91,39 +99,43 @@ async function handleSearch(request: SearchRequest): Promise<SearchItem[]> {
 async function handleAction(request: ActionRequest): Promise<void> {
   const rawId = request.id.replace(/^(tab|history|bookmark|closed)-/, "");
 
-  switch (request.action) {
-    case "switch": {
-      const tabId = parseInt(rawId, 10);
-      await chrome.tabs.update(tabId, { active: true });
-      const tab = await chrome.tabs.get(tabId);
-      if (tab.windowId != null) {
-        await chrome.windows.update(tab.windowId, { focused: true });
-      }
-      break;
-    }
-    case "open": {
-      if (request.newTab) {
-        await chrome.tabs.create({ url: request.id });
-      } else {
-        const [activeTab] = await chrome.tabs.query({
-          active: true,
-          currentWindow: true,
-        });
-        if (activeTab?.id != null) {
-          await chrome.tabs.update(activeTab.id, { url: request.id });
+  try {
+    switch (request.action) {
+      case "switch": {
+        const tabId = parseInt(rawId, 10);
+        await chrome.tabs.update(tabId, { active: true });
+        const tab = await chrome.tabs.get(tabId);
+        if (tab.windowId != null) {
+          await chrome.windows.update(tab.windowId, { focused: true });
         }
+        break;
       }
-      break;
+      case "open": {
+        if (request.newTab) {
+          await chrome.tabs.create({ url: request.id });
+        } else {
+          const [activeTab] = await chrome.tabs.query({
+            active: true,
+            currentWindow: true,
+          });
+          if (activeTab?.id != null) {
+            await chrome.tabs.update(activeTab.id, { url: request.id });
+          }
+        }
+        break;
+      }
+      case "close": {
+        const tabId = parseInt(rawId, 10);
+        await chrome.tabs.remove(tabId);
+        break;
+      }
+      case "restore": {
+        await chrome.sessions.restore(rawId);
+        break;
+      }
     }
-    case "close": {
-      const tabId = parseInt(rawId, 10);
-      await chrome.tabs.remove(tabId);
-      break;
-    }
-    case "restore": {
-      await chrome.sessions.restore(rawId);
-      break;
-    }
+  } catch (err) {
+    console.error(`[sciezka] action "${request.action}" failed:`, err);
   }
 }
 
