@@ -1,5 +1,6 @@
-export type SearchMode = "tabs" | "history" | "bookmarks" | "closed";
+export type SearchMode = "tabs" | "history" | "bookmarks" | "closed" | "duplicates";
 export type SearchMethod = "fuzzy" | "fulltext" | "prefix";
+export type DuplicateMatchMethod = "exact" | "ignoreHash" | "ignoreQuery";
 
 export interface SearchItem {
   id: string;
@@ -8,6 +9,7 @@ export interface SearchItem {
   type: SearchMode;
   favIconUrl?: string;
   lastAccessed?: number;
+  duplicateCount?: number;
 }
 
 export interface SearchResult {
@@ -30,7 +32,7 @@ export interface SearchResponse {
 
 export interface ActionRequest {
   type: "action";
-  action: "switch" | "open" | "close" | "restore";
+  action: "switch" | "open" | "close" | "restore" | "closeDuplicates";
   id: string;
   newTab?: boolean;
 }
@@ -51,6 +53,7 @@ export interface ResizeMessage {
 export interface Settings {
   defaultMethod: SearchMethod;
   modeOrder: SearchMode[];
+  duplicateMatchMethod: DuplicateMatchMethod;
 }
 
 export interface GetSettingsRequest {

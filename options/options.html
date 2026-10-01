@@ -97,6 +97,7 @@
       <option value="history">History</option>
       <option value="bookmarks">Bookmarks</option>
       <option value="closed">Recently Closed</option>
+      <option value="duplicates">Duplicates</option>
     </select>
   </div>
 
@@ -106,6 +107,15 @@
       <option value="fuzzy">Fuzzy</option>
       <option value="fulltext">Full Text</option>
       <option value="prefix">Prefix</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Duplicate matching <span class="desc">— how to compare URLs when finding duplicates</span></label>
+    <select id="opt-dup-method">
+      <option value="exact">Exact URL</option>
+      <option value="ignoreHash">Ignore #hash fragment</option>
+      <option value="ignoreQuery">Ignore ?query and #hash</option>
     </select>
   </div>
 

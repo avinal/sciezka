@@ -1,13 +1,20 @@
-import type { Message, SearchRequest, ActionRequest, SearchItem, Settings } from "./types";
+import type { Message, SearchRequest, ActionRequest, SearchItem, Settings, DuplicateMatchMethod } from "./types";
 
 const DEFAULT_SETTINGS: Settings = {
   defaultMethod: "fuzzy",
-  modeOrder: ["tabs", "history", "bookmarks", "closed"],
+  modeOrder: ["tabs", "history", "bookmarks", "closed", "duplicates"],
+  duplicateMatchMethod: "exact",
 };
 
 async function getSettings(): Promise<Settings> {
-  const data = await chrome.storage.sync.get(["defaultMethod", "modeOrder"]);
-  return { ...DEFAULT_SETTINGS, ...data } as Settings;
+  const data = await chrome.storage.sync.get(["defaultMethod", "modeOrder", "duplicateMatchMethod"]);
+  const settings = { ...DEFAULT_SETTINGS, ...data } as Settings;
+  for (const mode of DEFAULT_SETTINGS.modeOrder) {
+    if (!settings.modeOrder.includes(mode)) {
+      settings.modeOrder.push(mode);
+    }
+  }
+  return settings;
 }
 
 async function saveSettings(partial: Partial<Settings>): Promise<Settings> {
@@ -82,6 +89,55 @@ async function getRecentlyClosed(): Promise<SearchItem[]> {
     })));
 }
 
+function normalizeUrl(url: string, method: DuplicateMatchMethod): string {
+  if (method === "exact") return url;
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    if (method === "ignoreQuery") {
+      parsed.search = "";
+    }
+    return parsed.href;
+  } catch {
+    return url;
+  }
+}
+
+async function getDuplicateTabs(): Promise<SearchItem[]> {
+  const settings = await getSettings();
+  const method = settings.duplicateMatchMethod;
+  const tabs = await chrome.tabs.query({});
+
+  const groups = new Map<string, chrome.tabs.Tab[]>();
+  for (const tab of tabs) {
+    const key = normalizeUrl(tab.url ?? "", method);
+    const group = groups.get(key);
+    if (group) {
+      group.push(tab);
+    } else {
+      groups.set(key, [tab]);
+    }
+  }
+
+  const items: SearchItem[] = [];
+  for (const [, group] of groups) {
+    if (group.length < 2) continue;
+    group.sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0));
+    const tab = group[0];
+    items.push({
+      id: `tab-${tab.id}`,
+      title: tab.title ?? "",
+      url: tab.url ?? "",
+      type: "duplicates" as const,
+      favIconUrl: tab.favIconUrl,
+      lastAccessed: tab.lastAccessed,
+      duplicateCount: group.length,
+    });
+  }
+
+  return sortByRecent(items);
+}
+
 async function handleSearch(request: SearchRequest): Promise<SearchItem[]> {
   const { query, mode } = request;
   switch (mode) {
@@ -93,6 +149,8 @@ async function handleSearch(request: SearchRequest): Promise<SearchItem[]> {
       return getBookmarks(query);
     case "closed":
       return getRecentlyClosed();
+    case "duplicates":
+      return getDuplicateTabs();
   }
 }
 
@@ -131,6 +189,22 @@ async function handleAction(request: ActionRequest): Promise<void> {
       }
       case "restore": {
         await chrome.sessions.restore(rawId);
+        break;
+      }
+      case "closeDuplicates": {
+        const keepId = parseInt(rawId, 10);
+        const keepTab = await chrome.tabs.get(keepId);
+        const settings = await getSettings();
+        const keepKey = normalizeUrl(keepTab.url ?? "", settings.duplicateMatchMethod);
+        const allTabs = await chrome.tabs.query({});
+        const toClose: number[] = [];
+        for (const tab of allTabs) {
+          if (tab.id == null || tab.id === keepId) continue;
+          if (normalizeUrl(tab.url ?? "", settings.duplicateMatchMethod) === keepKey) {
+            toClose.push(tab.id);
+          }
+        }
+        if (toClose.length) await chrome.tabs.remove(toClose);
         break;
       }
     }

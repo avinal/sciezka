@@ -32,6 +32,8 @@
   --badge-bookmarks-text: #16a34a;
   --badge-closed-bg: #f3e8ff;
   --badge-closed-text: #9333ea;
+  --badge-duplicates-bg: #fee2e2;
+  --badge-duplicates-text: #dc2626;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -62,6 +64,8 @@
     --badge-bookmarks-text: #4ade80;
     --badge-closed-bg: #2e1065;
     --badge-closed-text: #c084fc;
+    --badge-duplicates-bg: #450a0a;
+    --badge-duplicates-text: #f87171;
   }
 }
 
@@ -92,6 +96,8 @@
   --badge-bookmarks-text: #4ade80;
   --badge-closed-bg: #2e1065;
   --badge-closed-text: #c084fc;
+  --badge-duplicates-bg: #450a0a;
+  --badge-duplicates-text: #f87171;
 }
 
 body {
@@ -420,6 +426,16 @@ body {
 .badge-history { background: var(--badge-history-bg); color: var(--badge-history-text); }
 .badge-bookmarks { background: var(--badge-bookmarks-bg); color: var(--badge-bookmarks-text); }
 .badge-closed { background: var(--badge-closed-bg); color: var(--badge-closed-text); }
+.badge-duplicates { background: var(--badge-duplicates-bg); color: var(--badge-duplicates-text); }
+
+.badge-duplicate-count {
+  font-size: 10px;
+  padding: 2px 5px;
+  font-weight: 600;
+  color: var(--badge-duplicates-text);
+  background: transparent;
+  letter-spacing: 0.3px;
+}
 
 .no-results {
   padding: 32px;

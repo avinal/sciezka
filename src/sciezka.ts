@@ -1,12 +1,13 @@
 import { search } from "./search";
-import type { SearchItem, SearchMode, SearchMethod, SearchResult, Message, Settings } from "./types";
+import type { SearchItem, SearchMode, SearchMethod, SearchResult, Message, Settings, DuplicateMatchMethod } from "./types";
 
-const ALL_MODES: SearchMode[] = ["tabs", "history", "bookmarks", "closed"];
+const ALL_MODES: SearchMode[] = ["tabs", "history", "bookmarks", "closed", "duplicates"];
 const MODE_LABELS: Record<SearchMode, string> = {
   tabs: "Tabs",
   history: "History",
   bookmarks: "Bookmarks",
   closed: "Closed",
+  duplicates: "Duplicates",
 };
 const METHODS: SearchMethod[] = ["fuzzy", "fulltext", "prefix"];
 const METHOD_LABELS: Record<SearchMethod, string> = {
@@ -22,6 +23,7 @@ let currentMode: SearchMode = "tabs";
 let currentMethod: SearchMethod = "fuzzy";
 let results: SearchResult[] = [];
 let selectedIndex = 0;
+let currentDupMethod: DuplicateMatchMethod = "exact";
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let configOpen = false;
 
@@ -59,7 +61,7 @@ function sendMessage(msg: Message): Promise<unknown> {
 function persistSettings(): void {
   sendMessage({
     type: "saveSettings",
-    settings: { defaultMethod: currentMethod, modeOrder: modes },
+    settings: { defaultMethod: currentMethod, modeOrder: modes, duplicateMatchMethod: currentDupMethod },
   } as Message);
 }
 
@@ -128,6 +130,35 @@ function renderConfigPanel(): void {
   }
   methodSection.appendChild(methodRow);
   configPanel.appendChild(methodSection);
+
+  const DUP_METHODS: DuplicateMatchMethod[] = ["exact", "ignoreHash", "ignoreQuery"];
+  const DUP_METHOD_LABELS: Record<DuplicateMatchMethod, string> = {
+    exact: "Exact URL",
+    ignoreHash: "Ignore #hash",
+    ignoreQuery: "Ignore ?query",
+  };
+  const dupSection = document.createElement("div");
+  dupSection.className = "config-section";
+  const dupLabel = document.createElement("div");
+  dupLabel.className = "config-label";
+  dupLabel.textContent = "Duplicate Matching";
+  dupSection.appendChild(dupLabel);
+  const dupRow = document.createElement("div");
+  dupRow.className = "config-method-row";
+  for (const dm of DUP_METHODS) {
+    const btn = document.createElement("button");
+    btn.className = `config-method-btn${dm === currentDupMethod ? " active" : ""}`;
+    btn.textContent = DUP_METHOD_LABELS[dm];
+    btn.addEventListener("click", () => {
+      currentDupMethod = dm;
+      renderConfigPanel();
+      persistSettings();
+      if (currentMode === "duplicates") doSearch();
+    });
+    dupRow.appendChild(btn);
+  }
+  dupSection.appendChild(dupRow);
+  configPanel.appendChild(dupSection);
 
   const orderSection = document.createElement("div");
   orderSection.className = "config-section";
@@ -230,6 +261,7 @@ const TYPE_ICONS: Record<SearchMode, string> = {
   history: "🕒",
   bookmarks: "⭐",
   closed: "🚪",
+  duplicates: "🔄",
 };
 
 function renderResults(): void {
@@ -281,7 +313,14 @@ function renderResults(): void {
     badge.className = `result-badge badge-${item.type}`;
     badge.textContent = MODE_LABELS[item.type];
 
-    row.append(icon, text, badge);
+    if (item.duplicateCount != null && item.duplicateCount > 1) {
+      const countBadge = document.createElement("span");
+      countBadge.className = "result-badge badge-duplicate-count";
+      countBadge.textContent = `×${item.duplicateCount}`;
+      row.append(icon, text, countBadge, badge);
+    } else {
+      row.append(icon, text, badge);
+    }
     row.addEventListener("click", () => activateResult(i));
     row.addEventListener("mouseenter", () => {
       selectedIndex = i;
@@ -312,7 +351,7 @@ function activateResult(index: number): void {
 
   const { item } = result;
   let action: string;
-  if (item.type === "tabs") {
+  if (item.type === "tabs" || item.type === "duplicates") {
     action = "switch";
   } else if (item.type === "closed") {
     action = "restore";
@@ -320,7 +359,7 @@ function activateResult(index: number): void {
     action = "open";
   }
 
-  const msg: Message = item.type === "tabs" || item.type === "closed"
+  const msg: Message = item.type === "tabs" || item.type === "closed" || item.type === "duplicates"
     ? { type: "action", action: action as "switch" | "restore", id: item.id }
     : { type: "action", action: "open", id: item.url };
 
@@ -383,7 +422,7 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     if (e.ctrlKey && e.shiftKey) {
       const result = results[selectedIndex];
-      if (result && result.item.type !== "tabs") {
+      if (result && result.item.type !== "tabs" && result.item.type !== "duplicates") {
         sendMessage({ type: "action", action: "open", id: result.item.url, newTab: true });
         window.parent.postMessage({ type: "closeSciezka", _nonce: MESSAGE_NONCE }, "*");
       }
@@ -416,7 +455,13 @@ document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key === "d") {
     e.preventDefault();
     const result = results[selectedIndex];
-    if (result && result.item.type === "tabs") {
+    if (result && result.item.type === "duplicates") {
+      sendMessage({ type: "action", action: "closeDuplicates", id: result.item.id }).then(() => {
+        results.splice(selectedIndex, 1);
+        if (selectedIndex >= results.length) selectedIndex = Math.max(results.length - 1, 0);
+        doSearch();
+      });
+    } else if (result && result.item.type === "tabs") {
       sendMessage({ type: "action", action: "close", id: result.item.id });
       results.splice(selectedIndex, 1);
       if (selectedIndex >= results.length) selectedIndex = Math.max(results.length - 1, 0);
@@ -425,7 +470,7 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  if (e.ctrlKey && e.key >= "1" && e.key <= "4") {
+  if (e.ctrlKey && e.key >= "1" && e.key <= String(Math.min(modes.length, 9))) {
     e.preventDefault();
     const modeIdx = parseInt(e.key, 10) - 1;
     if (modeIdx < modes.length) {
@@ -446,6 +491,9 @@ async function loadSettings(): Promise<void> {
       if (data.settings.modeOrder?.length) {
         modes = data.settings.modeOrder;
         currentMode = modes[0];
+      }
+      if (data.settings.duplicateMatchMethod) {
+        currentDupMethod = data.settings.duplicateMatchMethod;
       }
     }
   } catch {
