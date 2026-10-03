@@ -1,12 +1,14 @@
 import { search } from "./search";
-import type { SearchItem, SearchMode, SearchMethod, SearchResult, Message, Settings } from "./types";
+import type { SearchItem, SearchMode, SearchMethod, SearchResult, Message, Settings, DuplicateMatchMethod, StaleMethod, StaleUnit } from "./types";
 
-const ALL_MODES: SearchMode[] = ["tabs", "history", "bookmarks", "closed"];
+const ALL_MODES: SearchMode[] = ["tabs", "history", "bookmarks", "closed", "duplicates", "stale"];
 const MODE_LABELS: Record<SearchMode, string> = {
   tabs: "Tabs",
   history: "History",
   bookmarks: "Bookmarks",
   closed: "Closed",
+  duplicates: "Duplicates",
+  stale: "Stale",
 };
 const METHODS: SearchMethod[] = ["fuzzy", "fulltext", "prefix"];
 const METHOD_LABELS: Record<SearchMethod, string> = {
@@ -22,6 +24,11 @@ let currentMode: SearchMode = "tabs";
 let currentMethod: SearchMethod = "fuzzy";
 let results: SearchResult[] = [];
 let selectedIndex = 0;
+let currentDupMethod: DuplicateMatchMethod = "exact";
+let currentStaleMethod: StaleMethod = "time";
+let currentStaleThreshold = 4;
+let currentStaleThresholdUnit: StaleUnit = "weeks";
+let currentStaleMaxCount = 100;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let configOpen = false;
 
@@ -39,11 +46,16 @@ function notifyResize(): void {
 }
 
 function sendMessage(msg: Message): Promise<unknown> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     window.parent.postMessage({ ...msg, _nonce: MESSAGE_NONCE }, "*");
+    const timeout = setTimeout(() => {
+      window.removeEventListener("message", handler);
+      reject(new Error("Message timeout"));
+    }, 5000);
     const handler = (event: MessageEvent) => {
       if (event.source !== window.parent) return;
       if (!event.data?._nonce || event.data._nonce !== MESSAGE_NONCE) return;
+      clearTimeout(timeout);
       window.removeEventListener("message", handler);
       resolve(event.data);
     };
@@ -54,7 +66,15 @@ function sendMessage(msg: Message): Promise<unknown> {
 function persistSettings(): void {
   sendMessage({
     type: "saveSettings",
-    settings: { defaultMethod: currentMethod, modeOrder: modes },
+    settings: {
+      defaultMethod: currentMethod,
+      modeOrder: modes,
+      duplicateMatchMethod: currentDupMethod,
+      staleMethod: currentStaleMethod,
+      staleThreshold: currentStaleThreshold,
+      staleThresholdUnit: currentStaleThresholdUnit,
+      staleMaxCount: currentStaleMaxCount,
+    },
   } as Message);
 }
 
@@ -77,6 +97,18 @@ function renderModeBar(): void {
     });
     modeBar.appendChild(btn);
   }
+  const spacer = document.createElement("span");
+  spacer.style.flex = "1";
+  modeBar.appendChild(spacer);
+  const count = document.createElement("span");
+  count.id = "result-count";
+  count.textContent = String(results.length);
+  modeBar.appendChild(count);
+}
+
+function updateResultCount(): void {
+  const el = document.getElementById("result-count");
+  if (el) el.textContent = String(results.length);
 }
 
 function renderMethodBadge(): void {
@@ -123,6 +155,117 @@ function renderConfigPanel(): void {
   }
   methodSection.appendChild(methodRow);
   configPanel.appendChild(methodSection);
+
+  const DUP_METHODS: DuplicateMatchMethod[] = ["exact", "ignoreHash", "ignoreQuery"];
+  const DUP_METHOD_LABELS: Record<DuplicateMatchMethod, string> = {
+    exact: "Exact URL",
+    ignoreHash: "Ignore #hash",
+    ignoreQuery: "Ignore ?query",
+  };
+  const dupSection = document.createElement("div");
+  dupSection.className = "config-section";
+  const dupLabel = document.createElement("div");
+  dupLabel.className = "config-label";
+  dupLabel.textContent = "Duplicate Matching";
+  dupSection.appendChild(dupLabel);
+  const dupRow = document.createElement("div");
+  dupRow.className = "config-method-row";
+  for (const dm of DUP_METHODS) {
+    const btn = document.createElement("button");
+    btn.className = `config-method-btn${dm === currentDupMethod ? " active" : ""}`;
+    btn.textContent = DUP_METHOD_LABELS[dm];
+    btn.addEventListener("click", () => {
+      currentDupMethod = dm;
+      renderConfigPanel();
+      persistSettings();
+      if (currentMode === "duplicates") doSearch();
+    });
+    dupRow.appendChild(btn);
+  }
+  dupSection.appendChild(dupRow);
+  configPanel.appendChild(dupSection);
+
+  const STALE_METHODS: StaleMethod[] = ["time", "count", "both"];
+  const STALE_METHOD_LABELS: Record<StaleMethod, string> = {
+    time: "Time",
+    count: "Count",
+    both: "Time + Cap",
+  };
+  const staleSection = document.createElement("div");
+  staleSection.className = "config-section";
+  const staleLabel = document.createElement("div");
+  staleLabel.className = "config-label";
+  staleLabel.textContent = "Stale Tabs";
+  staleSection.appendChild(staleLabel);
+  const staleRow = document.createElement("div");
+  staleRow.className = "config-method-row";
+  for (const sm of STALE_METHODS) {
+    const btn = document.createElement("button");
+    btn.className = `config-method-btn${sm === currentStaleMethod ? " active" : ""}`;
+    btn.textContent = STALE_METHOD_LABELS[sm];
+    btn.addEventListener("click", () => {
+      currentStaleMethod = sm;
+      renderConfigPanel();
+      persistSettings();
+      if (currentMode === "stale") doSearch();
+    });
+    staleRow.appendChild(btn);
+  }
+  staleSection.appendChild(staleRow);
+
+  const staleInputs = document.createElement("div");
+  staleInputs.className = "config-inputs-row";
+  if (currentStaleMethod === "time" || currentStaleMethod === "both") {
+    const threshLabel = document.createElement("label");
+    threshLabel.className = "config-input-label";
+    threshLabel.textContent = "Older than";
+    const threshInput = document.createElement("input");
+    threshInput.type = "number";
+    threshInput.className = "config-number-input";
+    threshInput.min = "1";
+    threshInput.value = String(currentStaleThreshold);
+    threshInput.addEventListener("change", () => {
+      currentStaleThreshold = Math.max(1, parseInt(threshInput.value, 10) || 1);
+      persistSettings();
+      if (currentMode === "stale") doSearch();
+    });
+    const unitSelect = document.createElement("select");
+    unitSelect.className = "config-unit-select";
+    const UNITS: StaleUnit[] = ["hours", "days", "weeks"];
+    for (const u of UNITS) {
+      const opt = document.createElement("option");
+      opt.value = u;
+      opt.textContent = u;
+      opt.selected = u === currentStaleThresholdUnit;
+      unitSelect.appendChild(opt);
+    }
+    unitSelect.addEventListener("change", () => {
+      currentStaleThresholdUnit = unitSelect.value as StaleUnit;
+      persistSettings();
+      if (currentMode === "stale") doSearch();
+    });
+    threshLabel.append(threshInput, unitSelect);
+    staleInputs.appendChild(threshLabel);
+  }
+  if (currentStaleMethod === "count" || currentStaleMethod === "both") {
+    const countLabel = document.createElement("label");
+    countLabel.className = "config-input-label";
+    countLabel.textContent = "Max";
+    const countInput = document.createElement("input");
+    countInput.type = "number";
+    countInput.className = "config-number-input";
+    countInput.min = "1";
+    countInput.value = String(currentStaleMaxCount);
+    countInput.addEventListener("change", () => {
+      currentStaleMaxCount = Math.max(1, parseInt(countInput.value, 10) || 50);
+      persistSettings();
+      if (currentMode === "stale") doSearch();
+    });
+    countLabel.appendChild(countInput);
+    staleInputs.appendChild(countLabel);
+  }
+  staleSection.appendChild(staleInputs);
+  configPanel.appendChild(staleSection);
 
   const orderSection = document.createElement("div");
   orderSection.className = "config-section";
@@ -225,6 +368,8 @@ const TYPE_ICONS: Record<SearchMode, string> = {
   history: "🕒",
   bookmarks: "⭐",
   closed: "🚪",
+  duplicates: "🔄",
+  stale: "💤",
 };
 
 function renderResults(): void {
@@ -276,7 +421,14 @@ function renderResults(): void {
     badge.className = `result-badge badge-${item.type}`;
     badge.textContent = MODE_LABELS[item.type];
 
-    row.append(icon, text, badge);
+    if (item.duplicateCount != null && item.duplicateCount > 1) {
+      const countBadge = document.createElement("span");
+      countBadge.className = "result-badge badge-duplicate-count";
+      countBadge.textContent = `×${item.duplicateCount}`;
+      row.append(icon, text, countBadge, badge);
+    } else {
+      row.append(icon, text, badge);
+    }
     row.addEventListener("click", () => activateResult(i));
     row.addEventListener("mouseenter", () => {
       selectedIndex = i;
@@ -307,7 +459,7 @@ function activateResult(index: number): void {
 
   const { item } = result;
   let action: string;
-  if (item.type === "tabs") {
+  if (item.type === "tabs" || item.type === "duplicates" || item.type === "stale") {
     action = "switch";
   } else if (item.type === "closed") {
     action = "restore";
@@ -315,12 +467,12 @@ function activateResult(index: number): void {
     action = "open";
   }
 
-  const msg: Message = item.type === "tabs" || item.type === "closed"
+  const msg: Message = item.type === "tabs" || item.type === "closed" || item.type === "duplicates" || item.type === "stale"
     ? { type: "action", action: action as "switch" | "restore", id: item.id }
     : { type: "action", action: "open", id: item.url };
 
   sendMessage(msg);
-  window.parent.postMessage({ type: "closeSaka", _nonce: MESSAGE_NONCE }, "*");
+  window.parent.postMessage({ type: "closeSciezka", _nonce: MESSAGE_NONCE }, "*");
 }
 
 async function doSearch(): Promise<void> {
@@ -337,6 +489,7 @@ async function doSearch(): Promise<void> {
   results = search(items, query, currentMethod);
   selectedIndex = 0;
   renderResults();
+  updateResultCount();
 }
 
 input.addEventListener("input", () => {
@@ -352,7 +505,7 @@ document.addEventListener("keydown", (e) => {
       toggleConfig();
       return;
     }
-    window.parent.postMessage({ type: "closeSaka", _nonce: MESSAGE_NONCE }, "*");
+    window.parent.postMessage({ type: "closeSciezka", _nonce: MESSAGE_NONCE }, "*");
     return;
   }
 
@@ -378,9 +531,9 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     if (e.ctrlKey && e.shiftKey) {
       const result = results[selectedIndex];
-      if (result && result.item.type !== "tabs") {
+      if (result && result.item.type !== "tabs" && result.item.type !== "duplicates" && result.item.type !== "stale") {
         sendMessage({ type: "action", action: "open", id: result.item.url, newTab: true });
-        window.parent.postMessage({ type: "closeSaka", _nonce: MESSAGE_NONCE }, "*");
+        window.parent.postMessage({ type: "closeSciezka", _nonce: MESSAGE_NONCE }, "*");
       }
     } else {
       activateResult(selectedIndex);
@@ -411,16 +564,23 @@ document.addEventListener("keydown", (e) => {
   if (e.ctrlKey && e.key === "d") {
     e.preventDefault();
     const result = results[selectedIndex];
-    if (result && result.item.type === "tabs") {
+    if (result && result.item.type === "duplicates") {
+      sendMessage({ type: "action", action: "closeDuplicates", id: result.item.id }).then(() => {
+        results.splice(selectedIndex, 1);
+        if (selectedIndex >= results.length) selectedIndex = Math.max(results.length - 1, 0);
+        doSearch();
+      });
+    } else if (result && (result.item.type === "tabs" || result.item.type === "stale")) {
       sendMessage({ type: "action", action: "close", id: result.item.id });
       results.splice(selectedIndex, 1);
       if (selectedIndex >= results.length) selectedIndex = Math.max(results.length - 1, 0);
       renderResults();
+      updateResultCount();
     }
     return;
   }
 
-  if (e.ctrlKey && e.key >= "1" && e.key <= "4") {
+  if (e.ctrlKey && e.key >= "1" && e.key <= String(Math.min(modes.length, 9))) {
     e.preventDefault();
     const modeIdx = parseInt(e.key, 10) - 1;
     if (modeIdx < modes.length) {
@@ -441,6 +601,21 @@ async function loadSettings(): Promise<void> {
       if (data.settings.modeOrder?.length) {
         modes = data.settings.modeOrder;
         currentMode = modes[0];
+      }
+      if (data.settings.duplicateMatchMethod) {
+        currentDupMethod = data.settings.duplicateMatchMethod;
+      }
+      if (data.settings.staleMethod) {
+        currentStaleMethod = data.settings.staleMethod;
+      }
+      if (data.settings.staleThreshold) {
+        currentStaleThreshold = data.settings.staleThreshold;
+      }
+      if (data.settings.staleThresholdUnit) {
+        currentStaleThresholdUnit = data.settings.staleThresholdUnit;
+      }
+      if (data.settings.staleMaxCount) {
+        currentStaleMaxCount = data.settings.staleMaxCount;
       }
     }
   } catch {

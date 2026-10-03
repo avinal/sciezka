@@ -32,6 +32,10 @@
   --badge-bookmarks-text: #16a34a;
   --badge-closed-bg: #f3e8ff;
   --badge-closed-text: #9333ea;
+  --badge-duplicates-bg: #fee2e2;
+  --badge-duplicates-text: #dc2626;
+  --badge-stale-bg: #f1f5f9;
+  --badge-stale-text: #64748b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -62,6 +66,10 @@
     --badge-bookmarks-text: #4ade80;
     --badge-closed-bg: #2e1065;
     --badge-closed-text: #c084fc;
+    --badge-duplicates-bg: #450a0a;
+    --badge-duplicates-text: #f87171;
+    --badge-stale-bg: #1e293b;
+    --badge-stale-text: #94a3b8;
   }
 }
 
@@ -92,6 +100,10 @@
   --badge-bookmarks-text: #4ade80;
   --badge-closed-bg: #2e1065;
   --badge-closed-text: #c084fc;
+  --badge-duplicates-bg: #450a0a;
+  --badge-duplicates-text: #f87171;
+  --badge-stale-bg: #1e293b;
+  --badge-stale-text: #94a3b8;
 }
 
 body {
@@ -231,6 +243,49 @@ body {
   border-color: var(--accent);
 }
 
+.config-inputs-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.config-input-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.config-number-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.config-number-input:focus {
+  border-color: var(--accent);
+}
+
+.config-unit-select {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.config-unit-select:focus {
+  border-color: var(--accent);
+}
+
 .config-order-list {
   display: flex;
   flex-direction: column;
@@ -340,6 +395,16 @@ body {
   color: #fff;
 }
 
+#result-count {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--badge-bg);
+  color: var(--text-dim);
+  font-weight: 600;
+  align-self: center;
+  border: 1px solid var(--border);
+}
+
 /* Results */
 #results {
   max-height: 360px;
@@ -420,6 +485,17 @@ body {
 .badge-history { background: var(--badge-history-bg); color: var(--badge-history-text); }
 .badge-bookmarks { background: var(--badge-bookmarks-bg); color: var(--badge-bookmarks-text); }
 .badge-closed { background: var(--badge-closed-bg); color: var(--badge-closed-text); }
+.badge-duplicates { background: var(--badge-duplicates-bg); color: var(--badge-duplicates-text); }
+.badge-stale { background: var(--badge-stale-bg); color: var(--badge-stale-text); }
+
+.badge-duplicate-count {
+  font-size: 10px;
+  padding: 2px 5px;
+  font-weight: 600;
+  color: var(--badge-duplicates-text);
+  background: transparent;
+  letter-spacing: 0.3px;
+}
 
 .no-results {
   padding: 32px;

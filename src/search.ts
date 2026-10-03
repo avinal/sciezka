@@ -10,6 +10,25 @@ const SCORE_MATCH_CAPITAL = 0.7;
 const SCORE_MATCH_DOT = 0.6;
 const BONUS_FIRST_CHAR = 0.6;
 
+let cachedD: number[][] = [];
+let cachedM: number[][] = [];
+let cachedRows = 0;
+let cachedCols = 0;
+
+function getMatrices(rows: number, cols: number): { D: number[][]; M: number[][] } {
+  if (rows > cachedRows || cols > cachedCols) {
+    cachedRows = Math.max(rows, cachedRows);
+    cachedCols = Math.max(cols, cachedCols);
+    cachedD = Array.from({ length: cachedRows }, () => new Array(cachedCols).fill(0));
+    cachedM = Array.from({ length: cachedRows }, () => new Array(cachedCols).fill(0));
+  }
+  for (let i = 0; i < rows; i++) {
+    cachedD[i].fill(0, 0, cols);
+    cachedM[i].fill(0, 0, cols);
+  }
+  return { D: cachedD, M: cachedM };
+}
+
 function isSlash(c: string): boolean {
   return c === "/" || c === "\\";
 }
@@ -38,8 +57,7 @@ function fuzzyMatch(needle: string, haystack: string): { score: number; position
   }
   if (ni < n) return null;
 
-  const D: number[][] = Array.from({ length: n }, () => new Array(m).fill(0));
-  const M: number[][] = Array.from({ length: n }, () => new Array(m).fill(0));
+  const { D, M } = getMatrices(n, m);
 
   for (let i = 0; i < n; i++) {
     let prevScore = -Infinity;

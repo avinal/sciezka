@@ -88,7 +88,7 @@ window.addEventListener("message", (event) => {
   if (!event.data?._nonce || event.data._nonce !== messageNonce) return;
 
   const data = event.data as Message;
-  if (data.type === "closeSaka") {
+  if (data.type === "closeSciezka") {
     removeOverlay();
     return;
   }
