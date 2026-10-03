@@ -4,6 +4,8 @@ A fast, Spotlight-style browser extension for searching tabs, history, bookmarks
 
 *Sciezka* means "path" in Polish.
 
+**[Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/sciezka/)**
+
 ## Why?
 
 I relied on [Saka](https://github.com/lusakasa/saka) for years to quickly jump between tabs, search history, and find bookmarks — all from the keyboard. It stopped being maintained. I couldn't find a replacement that was as fast and keyboard-driven, so I built one.
@@ -15,87 +17,55 @@ I relied on [Saka](https://github.com/lusakasa/saka) for years to quickly jump b
 - **Keyboard-driven**: navigate entirely with keyboard shortcuts
 - **Spotlight-style overlay**: appears on any page without leaving your current context
 - **Match highlighting**: matched characters highlighted in search results
-- **Configurable**: set default search method and mode order via the options page
-
-### From source
-
-```bash
-git clone https://github.com/avinal/sciezka.git
-cd sciezka
-```
-
-Load as a temporary extension in Firefox: `about:debugging` > This Firefox > Load Temporary Add-on > select `manifest.json`.
+- **Duplicate tab detection**: find and close duplicate tabs with configurable URL matching
+- **Stale tab detection**: surface forgotten tabs based on time, count, or both
+- **Result count**: live count of results displayed in the mode bar
+- **Dark mode**: follows system preference
+- **Configurable**: search method, mode order, duplicate matching, and stale detection settings via the options page or inline config panel
 
 ## Usage
 
 Press **Ctrl+Space** to open the search overlay on any page.
 
+### Keyboard shortcuts
+
 | Key | Action |
 |---|---|
 | `Ctrl+Space` | Toggle open/close |
 | `Esc` | Close |
-| `Up/Down` | Navigate results |
+| `Up` / `Down` | Navigate results |
 | `Enter` | Open selected result |
-| `Ctrl+Shift+Enter` | Open in new tab |
 | `Tab` / `Shift+Tab` | Cycle through modes |
+| `Ctrl+1` to `Ctrl+6` | Jump to mode by position |
 | `Ctrl+F` | Cycle search method (fuzzy / full-text / prefix) |
-| `Ctrl+D` | Close selected tab (Tabs mode only) |
+| `Ctrl+D` | Close selected tab (Tabs / Duplicates / Stale modes) |
 
 ### Modes
 
-- **Tabs** — open tabs in all windows
-- **History** — browsing history (shows up to 100 most recent; Firefox searches your full history when you type a query)
-- **Bookmarks** — saved bookmarks
-- **Closed** — recently closed tabs (limited to 25 by Firefox's `browser.sessionstore.max_tabs_undo` setting)
-- **Duplicates** — tabs with duplicate URLs, with configurable matching (exact, ignore hash, ignore query)
-- **Stale** — tabs not accessed recently, with configurable criteria (time-based, count-based, or both)
+- **Tabs** — all open tabs across all windows. Switch to any tab or close it with `Ctrl+D`.
+- **History** — browsing history. Shows up to 100 most recent entries; Firefox searches your full history when you type a query.
+- **Bookmarks** — saved bookmarks. Open in current tab or new tab.
+- **Closed** — recently closed tabs, limited to 25 by Firefox's `browser.sessionstore.max_tabs_undo` setting. Select to restore.
+- **Duplicates** — shows one entry per duplicated URL with a count badge (e.g., ×3). `Ctrl+D` closes all duplicates of the selected URL, keeping the most recently accessed tab. URL matching is configurable: exact, ignore hash fragment, or ignore query string.
+- **Stale** — tabs not accessed within a configurable time window, sorted oldest-first. Three detection methods:
+  - **Time** — all tabs older than a threshold (default: 4 weeks)
+  - **Count** — the N least recently accessed tabs (default: 100)
+  - **Time + Cap** — tabs older than the threshold, capped at N results
 
-## Building
+### Settings
 
-### Requirements
+Open the settings gear icon in the search bar or go to `about:addons` > Sciezka > Preferences.
 
-- **OS**: Any platform that supports Node.js (Linux, macOS, Windows)
-- **Node.js**: v18 or later — [install instructions](https://nodejs.org/)
-- **npm**: comes bundled with Node.js
+- **Default mode** — which mode to show on open
+- **Default search method** — fuzzy, full-text, or prefix
+- **Duplicate matching** — how to compare URLs (exact, ignore hash, ignore query)
+- **Stale detection** — method (time/count/both), threshold with unit (hours/days/weeks), and max count
+- **Mode order** — drag to reorder modes in the inline config panel
 
-### Build steps
+## Development
 
-```bash
-git clone https://github.com/avinal/sciezka.git
-cd sciezka
-npm install
-npm run build
-```
-
-`npm run build` runs `node build.mjs`, which uses [esbuild](https://esbuild.github.io/) to compile three TypeScript entry points (`src/background.ts`, `src/content.ts`, `src/sciezka.ts`) into bundled JavaScript files in the `dist/` directory. No minification or obfuscation is applied.
-
-The built extension files are:
-- `dist/background.js` — background service worker
-- `dist/content.js` — content script
-- `dist/sciezka.js` — search UI logic
-
-Other commands:
-- `npm run watch` — rebuild on file changes
-- `npm run typecheck` — run TypeScript type checking
-- `npm run lint` — validate extension with web-ext
-
-### Packaging for Firefox
-
-To create a `.zip` (which Firefox also accepts as `.xpi`) for sideloading:
-
-```bash
-npm run build
-npx web-ext build --source-dir . --artifacts-dir ./artifacts --overwrite-dest \
-  --ignore-files "src/" "tsconfig.json" "build.mjs" "package.json" \
-  "package-lock.json" "node_modules/" "artifacts/" ".github/"
-```
-
-This produces `artifacts/sciezka-<version>.zip`. To install it in Firefox, go to `about:addons` > gear icon > Install Add-on From File.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for build instructions, packaging, and browser compatibility notes.
 
 ## License
 
 MIT
-
-## Disclaimer
-
-I have no practical knowledge of working with TypeScript or Mozilla Extensions. I created this extention mostly using Claude because the one I was using is not longer maintained. I hope to maintain this for long time. If you find any issues/concerns please feel free to contact me or open an issue.

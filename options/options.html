@@ -47,10 +47,19 @@
       background: #fff;
       color: #1a1a1a;
     }
-    select:focus {
+    select:focus, input[type="number"]:focus {
       outline: none;
       border-color: #3b82f6;
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    }
+    input[type="number"] {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 0;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+      color: #1a1a1a;
     }
     .saved {
       font-size: 12px;
@@ -80,7 +89,7 @@
       body { background: #1a1a1a; color: #e0e0e0; }
       label { color: #ccc; }
       label .desc { color: #777; }
-      select { background: #2a2a2a; border-color: #444; color: #e0e0e0; }
+      select, input[type="number"] { background: #2a2a2a; border-color: #444; color: #e0e0e0; }
       .shortcut-info { background: #252525; border-color: #333; color: #888; }
       .shortcut-info kbd { background: #333; }
     }
@@ -132,8 +141,8 @@
   <div class="field">
     <label>Stale threshold <span class="desc">— time since last access</span></label>
     <div style="display:flex;gap:8px;">
-      <input type="number" id="opt-stale-threshold" min="1" value="4" style="flex:1;padding:8px 12px;border:1px solid #ddd;font-size:14px;font-family:inherit;background:#fff;color:#1a1a1a;">
-      <select id="opt-stale-unit" style="padding:8px 12px;border:1px solid #ddd;font-size:14px;font-family:inherit;background:#fff;color:#1a1a1a;">
+      <input type="number" id="opt-stale-threshold" min="1" value="4" style="flex:1;">
+      <select id="opt-stale-unit">
         <option value="hours">Hours</option>
         <option value="days">Days</option>
         <option value="weeks" selected>Weeks</option>
@@ -143,7 +152,7 @@
 
   <div class="field">
     <label>Stale max count <span class="desc">— maximum stale tabs to show</span></label>
-    <input type="number" id="opt-stale-max" min="1" value="100" style="width:100%;padding:8px 12px;border:1px solid #ddd;font-size:14px;font-family:inherit;background:#fff;color:#1a1a1a;">
+    <input type="number" id="opt-stale-max" min="1" value="100" style="width:100%;">
   </div>
 
   <div class="saved" id="saved-msg">Settings saved</div>
