@@ -98,6 +98,7 @@
       <option value="bookmarks">Bookmarks</option>
       <option value="closed">Recently Closed</option>
       <option value="duplicates">Duplicates</option>
+      <option value="stale">Stale</option>
     </select>
   </div>
 
@@ -117,6 +118,32 @@
       <option value="ignoreHash">Ignore #hash fragment</option>
       <option value="ignoreQuery">Ignore ?query and #hash</option>
     </select>
+  </div>
+
+  <div class="field">
+    <label>Stale detection <span class="desc">— how to find stale tabs</span></label>
+    <select id="opt-stale-method">
+      <option value="time">Older than threshold</option>
+      <option value="count">Least recently accessed</option>
+      <option value="both">Older than threshold, capped</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Stale threshold <span class="desc">— time since last access</span></label>
+    <div style="display:flex;gap:8px;">
+      <input type="number" id="opt-stale-threshold" min="1" value="4" style="flex:1;padding:8px 12px;border:1px solid #ddd;font-size:14px;font-family:inherit;background:#fff;color:#1a1a1a;">
+      <select id="opt-stale-unit" style="padding:8px 12px;border:1px solid #ddd;font-size:14px;font-family:inherit;background:#fff;color:#1a1a1a;">
+        <option value="hours">Hours</option>
+        <option value="days">Days</option>
+        <option value="weeks" selected>Weeks</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Stale max count <span class="desc">— maximum stale tabs to show</span></label>
+    <input type="number" id="opt-stale-max" min="1" value="100" style="width:100%;padding:8px 12px;border:1px solid #ddd;font-size:14px;font-family:inherit;background:#fff;color:#1a1a1a;">
   </div>
 
   <div class="saved" id="saved-msg">Settings saved</div>

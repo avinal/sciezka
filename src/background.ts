@@ -1,13 +1,17 @@
-import type { Message, SearchRequest, ActionRequest, SearchItem, Settings, DuplicateMatchMethod } from "./types";
+import type { Message, SearchRequest, ActionRequest, SearchItem, Settings, DuplicateMatchMethod, StaleMethod, StaleUnit } from "./types";
 
 const DEFAULT_SETTINGS: Settings = {
   defaultMethod: "fuzzy",
-  modeOrder: ["tabs", "history", "bookmarks", "closed", "duplicates"],
+  modeOrder: ["tabs", "history", "bookmarks", "closed", "duplicates", "stale"],
   duplicateMatchMethod: "exact",
+  staleMethod: "time" as StaleMethod,
+  staleThreshold: 4,
+  staleThresholdUnit: "weeks" as StaleUnit,
+  staleMaxCount: 100,
 };
 
 async function getSettings(): Promise<Settings> {
-  const data = await chrome.storage.sync.get(["defaultMethod", "modeOrder", "duplicateMatchMethod"]);
+  const data = await chrome.storage.sync.get(["defaultMethod", "modeOrder", "duplicateMatchMethod", "staleMethod", "staleThreshold", "staleThresholdUnit", "staleMaxCount"]);
   const settings = { ...DEFAULT_SETTINGS, ...data } as Settings;
   for (const mode of DEFAULT_SETTINGS.modeOrder) {
     if (!settings.modeOrder.includes(mode)) {
@@ -138,6 +142,36 @@ async function getDuplicateTabs(): Promise<SearchItem[]> {
   return sortByRecent(items);
 }
 
+const UNIT_TO_HOURS: Record<StaleUnit, number> = { hours: 1, days: 24, weeks: 168 };
+
+async function getStaleTabs(): Promise<SearchItem[]> {
+  const settings = await getSettings();
+  const { staleMethod, staleThreshold, staleThresholdUnit, staleMaxCount } = settings;
+  const tabs = await chrome.tabs.query({});
+  const thresholdHours = staleThreshold * UNIT_TO_HOURS[staleThresholdUnit];
+  const cutoff = Date.now() - thresholdHours * 3600000;
+
+  let filtered: chrome.tabs.Tab[];
+  if (staleMethod === "count") {
+    filtered = [...tabs].sort((a, b) => (a.lastAccessed ?? 0) - (b.lastAccessed ?? 0)).slice(0, staleMaxCount);
+  } else {
+    filtered = tabs.filter((tab) => (tab.lastAccessed ?? 0) < cutoff);
+    filtered.sort((a, b) => (a.lastAccessed ?? 0) - (b.lastAccessed ?? 0));
+    if (staleMethod === "both") {
+      filtered = filtered.slice(0, staleMaxCount);
+    }
+  }
+
+  return filtered.map((tab) => ({
+    id: `tab-${tab.id}`,
+    title: tab.title ?? "",
+    url: tab.url ?? "",
+    type: "stale" as const,
+    favIconUrl: tab.favIconUrl,
+    lastAccessed: tab.lastAccessed,
+  }));
+}
+
 async function handleSearch(request: SearchRequest): Promise<SearchItem[]> {
   const { query, mode } = request;
   switch (mode) {
@@ -151,6 +185,8 @@ async function handleSearch(request: SearchRequest): Promise<SearchItem[]> {
       return getRecentlyClosed();
     case "duplicates":
       return getDuplicateTabs();
+    case "stale":
+      return getStaleTabs();
   }
 }
 

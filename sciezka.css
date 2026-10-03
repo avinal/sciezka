@@ -34,6 +34,8 @@
   --badge-closed-text: #9333ea;
   --badge-duplicates-bg: #fee2e2;
   --badge-duplicates-text: #dc2626;
+  --badge-stale-bg: #fef3c7;
+  --badge-stale-text: #d97706;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -66,6 +68,8 @@
     --badge-closed-text: #c084fc;
     --badge-duplicates-bg: #450a0a;
     --badge-duplicates-text: #f87171;
+    --badge-stale-bg: #422006;
+    --badge-stale-text: #fbbf24;
   }
 }
 
@@ -98,6 +102,8 @@
   --badge-closed-text: #c084fc;
   --badge-duplicates-bg: #450a0a;
   --badge-duplicates-text: #f87171;
+  --badge-stale-bg: #422006;
+  --badge-stale-text: #fbbf24;
 }
 
 body {
@@ -234,6 +240,49 @@ body {
 .config-method-btn.active {
   background: var(--accent);
   color: #fff;
+  border-color: var(--accent);
+}
+
+.config-inputs-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.config-input-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.config-number-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.config-number-input:focus {
+  border-color: var(--accent);
+}
+
+.config-unit-select {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.config-unit-select:focus {
   border-color: var(--accent);
 }
 
@@ -437,6 +486,7 @@ body {
 .badge-bookmarks { background: var(--badge-bookmarks-bg); color: var(--badge-bookmarks-text); }
 .badge-closed { background: var(--badge-closed-bg); color: var(--badge-closed-text); }
 .badge-duplicates { background: var(--badge-duplicates-bg); color: var(--badge-duplicates-text); }
+.badge-stale { background: var(--badge-stale-bg); color: var(--badge-stale-text); }
 
 .badge-duplicate-count {
   font-size: 10px;

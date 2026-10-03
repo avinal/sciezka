@@ -48,6 +48,7 @@ Press **Ctrl+Space** to open the search overlay on any page.
 - **Bookmarks** — saved bookmarks
 - **Closed** — recently closed tabs (limited to 25 by Firefox's `browser.sessionstore.max_tabs_undo` setting)
 - **Duplicates** — tabs with duplicate URLs, with configurable matching (exact, ignore hash, ignore query)
+- **Stale** — tabs not accessed recently, with configurable criteria (time-based, count-based, or both)
 
 ## Building
 

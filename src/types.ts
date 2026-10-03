@@ -1,6 +1,8 @@
-export type SearchMode = "tabs" | "history" | "bookmarks" | "closed" | "duplicates";
+export type SearchMode = "tabs" | "history" | "bookmarks" | "closed" | "duplicates" | "stale";
 export type SearchMethod = "fuzzy" | "fulltext" | "prefix";
 export type DuplicateMatchMethod = "exact" | "ignoreHash" | "ignoreQuery";
+export type StaleMethod = "time" | "count" | "both";
+export type StaleUnit = "hours" | "days" | "weeks";
 
 export interface SearchItem {
   id: string;
@@ -54,6 +56,10 @@ export interface Settings {
   defaultMethod: SearchMethod;
   modeOrder: SearchMode[];
   duplicateMatchMethod: DuplicateMatchMethod;
+  staleMethod: StaleMethod;
+  staleThreshold: number;
+  staleThresholdUnit: StaleUnit;
+  staleMaxCount: number;
 }
 
 export interface GetSettingsRequest {
